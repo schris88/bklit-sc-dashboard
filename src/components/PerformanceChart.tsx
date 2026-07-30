@@ -113,8 +113,9 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin }: Perfo
     fetch('/api/sc/alerts')
       .then((res) => res.json())
       .then((res) => {
-        if (res.ok && res.data?.result) {
-          setAlerts(res.data.result || []);
+        if (res.ok && res.data) {
+          const items = res.data.result?.items || res.data.items || (Array.isArray(res.data.result) ? res.data.result : []);
+          setAlerts(Array.isArray(items) ? items : []);
         }
       })
       .catch((err) => console.error('Error fetching alerts:', err));
@@ -186,7 +187,8 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin }: Perfo
   const isPositive = priceChange >= 0;
 
   // Active alerts for the selected stock
-  const activeStockAlerts = alerts.filter(
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const activeStockAlerts = safeAlerts.filter(
     (a) => a.isin === selectedIsin && a.is_active !== false
   );
 
