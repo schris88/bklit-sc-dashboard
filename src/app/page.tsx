@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [tagesgeld, setTagesgeld] = useState<any>(null);
   const [selectedIsin, setSelectedIsin] = useState<string>('LU0274208692');
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export default function Dashboard() {
         setTagesgeld(tagesgeldRes.data);
       }
 
+      setRefreshTrigger((prev) => prev + 1);
       setLastUpdated(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err: any) {
       console.error('Failed to fetch SC data:', err);
@@ -111,6 +113,7 @@ export default function Dashboard() {
           holdings={holdings}
           selectedIsin={selectedIsin}
           onSelectIsin={setSelectedIsin}
+          refreshTrigger={refreshTrigger}
         />
 
         {/* Dividends & Interest Income Section */}

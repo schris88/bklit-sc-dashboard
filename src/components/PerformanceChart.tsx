@@ -33,6 +33,7 @@ interface PerformanceChartProps {
   holdings: SecurityItem[];
   selectedIsin: string;
   onSelectIsin: (isin: string) => void;
+  refreshTrigger?: number;
 }
 
 const TIMEFRAMES = [
@@ -57,7 +58,7 @@ const PRESET_PERCENTAGES = [
   { label: '-10%', value: -10, isUp: false }
 ];
 
-export function PerformanceChart({ holdings, selectedIsin, onSelectIsin }: PerformanceChartProps) {
+export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refreshTrigger = 0 }: PerformanceChartProps) {
   const [timeframe, setTimeframe] = useState<string>('1y');
   const [chartData, setChartData] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
@@ -106,7 +107,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin }: Perfo
     return () => {
       isMounted = false;
     };
-  }, [selectedIsin, timeframe]);
+  }, [selectedIsin, timeframe, refreshTrigger]);
 
   // Fetch price alerts
   const fetchAlerts = () => {
@@ -123,7 +124,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin }: Perfo
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [refreshTrigger]);
 
   // Add price alert handler
   const handleAddAlertByPrice = async (targetPrice: number) => {
