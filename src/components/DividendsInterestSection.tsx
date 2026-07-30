@@ -16,8 +16,10 @@ import {
   Percent,
   TrendingUp,
   Search,
-  Sparkles,
-  Award
+  Award,
+  ChevronDown,
+  ChevronUp,
+  History
 } from 'lucide-react';
 
 interface TransactionItem {
@@ -40,6 +42,7 @@ interface DividendsInterestSectionProps {
 export function DividendsInterestSection({ transactions, loading }: DividendsInterestSectionProps) {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<'ALL' | 'DISTRIBUTION' | 'INTEREST'>('ALL');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Calculate totals (excluding subscription fees)
   let totalDividends = 0;
@@ -193,7 +196,7 @@ export function DividendsInterestSection({ transactions, loading }: DividendsInt
       </div>
 
       {/* Monthly Breakdown Chart & Top Payers */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Bar Chart: Monthly Income */}
         <div className="lg:col-span-2 glass-panel p-5 rounded-xl">
           <div className="flex items-center justify-between mb-4">
@@ -257,82 +260,100 @@ export function DividendsInterestSection({ transactions, loading }: DividendsInt
         </div>
       </div>
 
-      {/* Transactions List */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h3 className="text-sm font-bold text-white">Cash Payout History</h3>
+      {/* Collapsible Transactions History Accordion */}
+      <div className="border-t border-slate-800/80 pt-4">
+        <button
+          onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+          className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/70 hover:bg-slate-800/80 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-all"
+        >
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-emerald-400" />
+            <span>Cash Payout History ({yieldTransactions.length} Events)</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400">
+            <span>{isHistoryOpen ? 'Hide History' : 'Show History'}</span>
+            {isHistoryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </button>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search payout..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl pl-8 pr-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 w-44"
-              />
+        {isHistoryOpen && (
+          <div className="mt-4 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <h3 className="text-sm font-bold text-white">Cash Payout Log</h3>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search payout..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl pl-8 pr-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 w-44"
+                  />
+                </div>
+
+                <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-slate-800 text-[11px]">
+                  {(['ALL', 'DISTRIBUTION', 'INTEREST'] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setFilterCategory(cat)}
+                      className={`px-2.5 py-1 font-semibold rounded-lg transition-all ${
+                        filterCategory === cat ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {cat === 'DISTRIBUTION' ? 'Dividends' : cat === 'INTEREST' ? 'Interest' : 'All Payouts'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-slate-800 text-[11px]">
-              {(['ALL', 'DISTRIBUTION', 'INTEREST'] as const).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`px-2.5 py-1 font-semibold rounded-lg transition-all ${
-                    filterCategory === cat ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {cat === 'DISTRIBUTION' ? 'Dividends' : cat === 'INTEREST' ? 'Interest' : 'All Payouts'}
-                </button>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-900/80 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Type</th>
+                    <th className="p-3">Description / Security</th>
+                    <th className="p-3 text-right">Payout Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {filteredTxs.map((tx) => {
+                    const type = tx.cash_transaction_type || tx.type;
+
+                    return (
+                      <tr key={tx.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3 font-mono text-slate-400">
+                          {new Date(tx.last_event_datetime).toLocaleDateString('de-DE')}
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
+                              type === 'DISTRIBUTION'
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                            }`}
+                          >
+                            {type === 'DISTRIBUTION' ? 'DIVIDEND' : 'INTEREST'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium text-white">
+                          {tx.description}
+                          {tx.related_isin && <span className="block text-[10px] font-mono text-slate-400">{tx.related_isin}</span>}
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-emerald-400">
+                          +{formatCurrency(tx.amount)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-900/80 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-800">
-              <tr>
-                <th className="p-3">Date</th>
-                <th className="p-3">Type</th>
-                <th className="p-3">Description / Security</th>
-                <th className="p-3 text-right">Payout Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {filteredTxs.slice(0, 15).map((tx) => {
-                const type = tx.cash_transaction_type || tx.type;
-
-                return (
-                  <tr key={tx.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3 font-mono text-slate-400">
-                      {new Date(tx.last_event_datetime).toLocaleDateString('de-DE')}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                          type === 'DISTRIBUTION'
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                        }`}
-                      >
-                        {type === 'DISTRIBUTION' ? 'DIVIDEND' : 'INTEREST'}
-                      </span>
-                    </td>
-                    <td className="p-3 font-medium text-white">
-                      {tx.description}
-                      {tx.related_isin && <span className="block text-[10px] font-mono text-slate-400">{tx.related_isin}</span>}
-                    </td>
-                    <td className="p-3 text-right font-mono font-bold text-emerald-400">
-                      +{formatCurrency(tx.amount)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        )}
       </div>
     </div>
   );
