@@ -5,13 +5,14 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
   ReferenceLine
 } from 'recharts';
-import { Bell, BellPlus, Trash2, Loader2, AlertCircle, Plus, Minus } from 'lucide-react';
+import { Bell, BellPlus, Trash2, Loader2, AlertCircle, TrendingUp, LineChart } from 'lucide-react';
 
 interface SecurityItem {
   isin: string;
@@ -63,13 +64,16 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
   const [chartData, setChartData] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [customPriceInput, setCustomPriceInput] = useState<string>('');
+  const [showTrendline, setShowTrendline] = useState<boolean>(true);
+  const [showSMA20, setShowSMA20] = useState<boolean>(false);
+  const [showSMA50, setShowSMA50] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [alertActionLoading, setAlertActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedSecurity = holdings.find((h) => h.isin === selectedIsin) || holdings[0];
 
-  // Fetch chart data
+  // Fetch chart data and compute trendlines
   useEffect(() => {
     if (!selectedIsin) return;
 
@@ -83,14 +87,49 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
         if (!isMounted) return;
         if (res.ok && res.data) {
           const rawPoints = res.data.data_points || res.data.points || res.data.result?.points || (Array.isArray(res.data.result) ? res.data.result : []);
-          const formatted = rawPoints.map((pt: any) => {
+          
+          // Calculate Linear Regression Slope & Intercept
+          const n = rawPoints.length;
+          let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+          rawPoints.forEach((pt: any, i: number) => {
+            sumX += i;
+            sumY += pt.mid_price;
+            sumXY += i * pt.mid_price;
+            sumX2 += i * i;
+          });
+          const slope = n > 1 ? (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) : 0;
+          const intercept = n > 0 ? (sumY - slope * sumX) / n : 0;
+
+          const formatted = rawPoints.map((pt: any, i: number) => {
             const dateObj = new Date(pt.timestamp_utc);
+            const trendVal = slope * i + intercept;
+
+            // Calculate SMA 20
+            let sma20Val = null;
+            if (i >= 19) {
+              let sum = 0;
+              for (let k = i - 19; k <= i; k++) sum += rawPoints[k].mid_price;
+              sma20Val = sum / 20;
+            }
+
+            // Calculate SMA 50
+            let sma50Val = null;
+            if (i >= 49) {
+              let sum = 0;
+              for (let k = i - 49; k <= i; k++) sum += rawPoints[k].mid_price;
+              sma50Val = sum / 50;
+            }
+
             return {
               timestamp: pt.timestamp_utc,
               dateStr: dateObj.toLocaleDateString('de-DE', { month: 'short', day: 'numeric', year: '2-digit' }),
-              price: pt.mid_price
+              price: pt.mid_price,
+              trendline: Number(trendVal.toFixed(4)),
+              sma20: sma20Val ? Number(sma20Val.toFixed(4)) : null,
+              sma50: sma50Val ? Number(sma50Val.toFixed(4)) : null
             };
           });
+
           setChartData(formatted);
         } else {
           setError(res.error || 'No chart data available');
@@ -193,7 +232,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
     (a) => a.isin === selectedIsin && a.is_active !== false
   );
 
-  // Y domain padding including active alert lines
+  // Y domain padding including active alert lines & trendlines
   const allPrices = [
     ...chartData.map((d) => d.price),
     ...activeStockAlerts.map((a) => a.price)
@@ -208,7 +247,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
       <div className={`absolute top-0 right-1/4 w-96 h-96 ${isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10'} rounded-full blur-3xl pointer-events-none transition-all duration-500`} />
 
       {/* Top Controls Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 relative z-10">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 relative z-10">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
@@ -262,6 +301,51 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Trendlines & Technical Indicator Toggles */}
+      <div className="flex items-center justify-between gap-3 mb-4 p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 relative z-10 flex-wrap">
+        <div className="flex items-center gap-2">
+          <LineChart className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-bold text-slate-300">Technical Indicators:</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTrendline(!showTrendline)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+              showTrendline
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                : 'bg-slate-800/40 text-slate-400 border-slate-700/50 hover:text-slate-200'
+            }`}
+          >
+            <span className="w-2.5 h-0.5 bg-amber-400 rounded-full inline-block"></span>
+            <span>Linear Trend</span>
+          </button>
+
+          <button
+            onClick={() => setShowSMA20(!showSMA20)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+              showSMA20
+                ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 shadow-sm'
+                : 'bg-slate-800/40 text-slate-400 border-slate-700/50 hover:text-slate-200'
+            }`}
+          >
+            <span className="w-2.5 h-0.5 bg-sky-400 rounded-full inline-block"></span>
+            <span>SMA 20</span>
+          </button>
+
+          <button
+            onClick={() => setShowSMA50(!showSMA50)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+              showSMA50
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm'
+                : 'bg-slate-800/40 text-slate-400 border-slate-700/50 hover:text-slate-200'
+            }`}
+          >
+            <span className="w-2.5 h-0.5 bg-purple-400 rounded-full inline-block"></span>
+            <span>SMA 50</span>
+          </button>
         </div>
       </div>
 
@@ -359,7 +443,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
       </div>
 
       {/* Chart Canvas */}
-      <div className="h-[360px] w-full relative z-10">
+      <div className="h-[380px] w-full relative z-10">
         {loading ? (
           <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
@@ -414,11 +498,26 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
                   if (active && payload && payload.length) {
                     const dataPoint = payload[0].payload;
                     return (
-                      <div className="glass-panel p-3 rounded-xl shadow-2xl border border-indigo-500/30 text-xs">
+                      <div className="glass-panel p-3.5 rounded-xl shadow-2xl border border-indigo-500/30 text-xs space-y-1">
                         <p className="text-slate-400 font-mono mb-1">{dataPoint.dateStr}</p>
                         <p className="text-base font-black text-white">
                           €{dataPoint.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                         </p>
+                        {showTrendline && dataPoint.trendline && (
+                          <p className="text-amber-400 font-mono text-[11px]">
+                            Trendline: €{dataPoint.trendline.toFixed(2)}
+                          </p>
+                        )}
+                        {showSMA20 && dataPoint.sma20 && (
+                          <p className="text-sky-400 font-mono text-[11px]">
+                            SMA 20: €{dataPoint.sma20.toFixed(2)}
+                          </p>
+                        )}
+                        {showSMA50 && dataPoint.sma50 && (
+                          <p className="text-purple-400 font-mono text-[11px]">
+                            SMA 50: €{dataPoint.sma50.toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     );
                   }
@@ -470,6 +569,43 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
                 fill={isPositive ? 'url(#chartGradientGreen)' : 'url(#chartGradientRed)'}
                 animationDuration={800}
               />
+
+              {/* Linear Trendline Overlay */}
+              {showTrendline && (
+                <Line
+                  type="monotone"
+                  dataKey="trendline"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="6 6"
+                  dot={false}
+                  name="Linear Trend"
+                />
+              )}
+
+              {/* SMA 20 Overlay */}
+              {showSMA20 && (
+                <Line
+                  type="monotone"
+                  dataKey="sma20"
+                  stroke="#38bdf8"
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="SMA 20"
+                />
+              )}
+
+              {/* SMA 50 Overlay */}
+              {showSMA50 && (
+                <Line
+                  type="monotone"
+                  dataKey="sma50"
+                  stroke="#c084fc"
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="SMA 50"
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         )}
