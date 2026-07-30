@@ -35,7 +35,7 @@ It communicates with local `sc` CLI endpoints via lightweight Next.js API routes
 - 🏦 **Tagesgeld Account Integration**: Dedicated Tagesgeld card displaying interest rates, current balance, and accrued interest earnings.
 - 💵 **Dividends & Interest Tracking**: Detailed view of past dividend payouts, coupon distributions, and cash interest.
 - 🔔 **Price Alerts & Savings Plans**: Overview of active price alerts and automated savings plans.
-- 🔐 **OAuth 2.0 & Read-Only Safety**: Integrates with `sc login` Device Code flow and fully supports `--local-read-only` authentication mode for maximum security.
+- 🔐 **Safe & Read-Only Focus**: No buy/sell functionality implemented (zero risk of accidental orders), two-step confirmation safety, and the only supported write operation is adding price alerts.
 
 ---
 
@@ -116,8 +116,15 @@ The Next.js API layer routes request to the local `sc` CLI:
 
 ## 🔒 Security & Privacy Notice
 
+> [!IMPORTANT]
+> **Safety & Zero Trading Risk Guarantee:**
+> - **No Buy or Sell Functionality**: There is **no buy or sell functionality** implemented anywhere in this dashboard. It is physically impossible to execute trades, place orders, or transfer funds through this application.
+> - **Safe from Accidental Triggers**: There is **zero chance of accidentally triggering any financial transaction**.
+> - **Two-Step Safety**: Actions are strictly guarded by two-step confirmation flows to prevent accidental edits.
+> - **Only Write Operation**: The **only write operation** supported by this dashboard is adding price alerts (alarms). All other operations are strictly read-only portfolio views.
+
 - **Local Execution**: All data stays on your local machine. The dashboard only communicates with your local installation of `scalable-cli`.
-- **Read-Only Mode Recommended**: We strongly recommend logging in with `sc login --local-read-only` when using third-party dashboards to prevent accidental trading execution.
+- **Read-Only Mode Recommended**: You can also log in with `sc login --local-read-only` when using third-party dashboards for an additional layer of security.
 - **Disclaimer**: This project is an independent community open-source project and is **not** officially affiliated with, endorsed by, or maintained by Scalable Capital GmbH.
 
 ---
