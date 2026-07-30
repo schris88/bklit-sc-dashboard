@@ -8,7 +8,8 @@ import { TagesgeldCard } from '@/components/TagesgeldCard';
 import { AssetAllocationChart } from '@/components/AssetAllocationChart';
 import { DividendsInterestSection } from '@/components/DividendsInterestSection';
 import { HoldingsTable } from '@/components/HoldingsTable';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { LoginModal } from '@/components/LoginModal';
+import { Loader2, AlertCircle, LogIn } from 'lucide-react';
 
 export default function Dashboard() {
   const [whoami, setWhoami] = useState<any>(null);
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [tagesgeld, setTagesgeld] = useState<any>(null);
   const [selectedIsin, setSelectedIsin] = useState<string>('LU0274208692');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +38,12 @@ export default function Dashboard() {
         fetch('/api/sc/tagesgeld').then((r) => r.json())
       ]);
 
-      if (whoamiRes.ok) setWhoami(whoamiRes.data);
+      if (whoamiRes.ok && whoamiRes.data?.name) {
+        setWhoami(whoamiRes.data);
+      } else {
+        setWhoami(null);
+      }
+
       if (overviewRes.ok) setOverview(overviewRes.data);
       if (holdingsRes.ok && holdingsRes.data?.result?.items) {
         const items = holdingsRes.data.result.items;
@@ -65,6 +72,19 @@ export default function Dashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/sc/logout', { method: 'POST' });
+      setWhoami(null);
+      setOverview(null);
+      setHoldings([]);
+      setTransactions([]);
+      setTagesgeld(null);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -80,6 +100,7 @@ export default function Dashboard() {
 
   const totalValuation = overview?.result?.valuation?.total || 0;
   const tagesgeldBalance = tagesgeld?.result?.balance || 0;
+  const isLoggedIn = Boolean(whoami && whoami.name);
 
   return (
     <div className="min-h-screen pb-16">
@@ -88,6 +109,8 @@ export default function Dashboard() {
         onRefresh={fetchData}
         isRefreshing={isRefreshing}
         lastUpdated={lastUpdated}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       <main className="max-w-7xl mx-auto px-6">
@@ -98,37 +121,63 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Top Portfolio & Combined Wealth Metrics */}
-        <OverviewCards
-          overviewData={overview}
-          holdingsCount={holdings.length}
-          tagesgeldBalance={tagesgeldBalance}
-        />
+        {!isLoggedIn ? (
+          <div className="glass-panel p-12 rounded-2xl text-center max-w-xl mx-auto my-12 border border-slate-700/80">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4">
+              <LogIn className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Scalable Session Disconnected</h2>
+            <p className="text-sm text-slate-400 mb-6">
+              Please authenticate via OAuth 2.0 device authorization to view your portfolio, charts, Tagesgeld, and yield analytics.
+            </p>
+            <button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="py-3 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/30 hover:scale-105"
+            >
+              Connect Scalable Account
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Top Portfolio & Combined Wealth Metrics */}
+            <OverviewCards
+              overviewData={overview}
+              holdingsCount={holdings.length}
+              tagesgeldBalance={tagesgeldBalance}
+            />
 
-        {/* Tagesgeld Account Card */}
-        <TagesgeldCard tagesgeldData={tagesgeld} />
+            {/* Tagesgeld Account Card */}
+            <TagesgeldCard tagesgeldData={tagesgeld} />
 
-        {/* Main Performance Chart */}
-        <PerformanceChart
-          holdings={holdings}
-          selectedIsin={selectedIsin}
-          onSelectIsin={setSelectedIsin}
-          refreshTrigger={refreshTrigger}
-        />
+            {/* Main Performance Chart */}
+            <PerformanceChart
+              holdings={holdings}
+              selectedIsin={selectedIsin}
+              onSelectIsin={setSelectedIsin}
+              refreshTrigger={refreshTrigger}
+            />
 
-        {/* Dividends & Interest Income Section */}
-        <DividendsInterestSection transactions={transactions} loading={isRefreshing} />
+            {/* Dividends & Interest Income Section */}
+            <DividendsInterestSection transactions={transactions} loading={isRefreshing} />
 
-        {/* Asset Distribution & Top Holdings */}
-        <AssetAllocationChart holdings={holdings} totalValuation={totalValuation} />
+            {/* Asset Distribution & Top Holdings */}
+            <AssetAllocationChart holdings={holdings} totalValuation={totalValuation} />
 
-        {/* Holdings Table */}
-        <HoldingsTable
-          holdings={holdings}
-          selectedIsin={selectedIsin}
-          onSelectIsin={setSelectedIsin}
-        />
+            {/* Holdings Table */}
+            <HoldingsTable
+              holdings={holdings}
+              selectedIsin={selectedIsin}
+              onSelectIsin={setSelectedIsin}
+            />
+          </>
+        )}
       </main>
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={fetchData}
+      />
     </div>
   );
 }
