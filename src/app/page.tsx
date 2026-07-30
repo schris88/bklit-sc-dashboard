@@ -85,6 +85,14 @@ export default function Dashboard() {
     }
   };
 
+  const handleSelectIsinAndScroll = (isin: string) => {
+    setSelectedIsin(isin);
+    const chartElem = document.getElementById('performance-chart-panel');
+    if (chartElem) {
+      chartElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -150,11 +158,20 @@ export default function Dashboard() {
             <TagesgeldCard tagesgeldData={tagesgeld} />
 
             {/* Main Performance Chart */}
-            <PerformanceChart
+            <div id="performance-chart-panel" className="scroll-mt-24">
+              <PerformanceChart
+                holdings={holdings}
+                selectedIsin={selectedIsin}
+                onSelectIsin={setSelectedIsin}
+                refreshTrigger={refreshTrigger}
+              />
+            </div>
+
+            {/* Holdings Table directly under the Performance Chart */}
+            <HoldingsTable
               holdings={holdings}
               selectedIsin={selectedIsin}
-              onSelectIsin={setSelectedIsin}
-              refreshTrigger={refreshTrigger}
+              onSelectIsin={handleSelectIsinAndScroll}
             />
 
             {/* Dividends & Interest Income Section */}
@@ -162,13 +179,6 @@ export default function Dashboard() {
 
             {/* Asset Distribution & Top Holdings */}
             <AssetAllocationChart holdings={holdings} totalValuation={totalValuation} />
-
-            {/* Holdings Table */}
-            <HoldingsTable
-              holdings={holdings}
-              selectedIsin={selectedIsin}
-              onSelectIsin={setSelectedIsin}
-            />
           </>
         )}
       </main>
