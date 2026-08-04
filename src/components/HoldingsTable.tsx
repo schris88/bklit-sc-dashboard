@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, LineChart, ArrowUpDown, Filter, Sparkles } from 'lucide-react';
+import { Search, LineChart, ArrowUpDown, Filter, Sparkles, Bell } from 'lucide-react';
 
 interface HoldingItem {
   isin: string;
@@ -18,9 +18,10 @@ interface HoldingsTableProps {
   holdings: HoldingItem[];
   selectedIsin: string;
   onSelectIsin: (isin: string) => void;
+  alerts?: any[];
 }
 
-export function HoldingsTable({ holdings, selectedIsin, onSelectIsin }: HoldingsTableProps) {
+export function HoldingsTable({ holdings, selectedIsin, onSelectIsin, alerts = [] }: HoldingsTableProps) {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'STOCK' | 'ETF'>('ALL');
   const [sortField, setSortField] = useState<'valuation' | 'gain' | 'name'>('valuation');
@@ -127,28 +128,37 @@ export function HoldingsTable({ holdings, selectedIsin, onSelectIsin }: Holdings
                   Valuation <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
-              <th className="p-3.5 text-right cursor-pointer" onClick={() => toggleSort('gain')}>
+              <th className="p-3.5 text-right cursor-pointer rounded-r-xl" onClick={() => toggleSort('gain')}>
                 <div className="flex items-center justify-end gap-1">
                   Unrealized P&L <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
-              <th className="p-3.5 text-center rounded-r-xl">Chart</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
             {filtered.map((item) => {
               const isSelected = item.isin === selectedIsin;
               const isGain = item.gainEur >= 0;
+              const activeAlertsCount = alerts.filter(a => a.isin === item.isin && a.is_active !== false).length;
 
               return (
                 <tr
                   key={item.isin}
-                  className={`hover:bg-slate-800/40 transition-colors ${
+                  onClick={() => onSelectIsin(item.isin)}
+                  className={`cursor-pointer hover:bg-slate-800/40 transition-colors ${
                     isSelected ? 'bg-indigo-950/40 border-l-2 border-indigo-500' : ''
                   }`}
                 >
                   <td className="p-3.5">
-                    <div className="font-bold text-white text-sm">{item.name}</div>
+                    <div className="font-bold text-white text-sm flex items-center gap-2">
+                      {item.name}
+                      {activeAlertsCount > 0 && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px]" title={`${activeAlertsCount} active price alarms`}>
+                          <Bell className="w-3 h-3" />
+                          {activeAlertsCount}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] font-mono text-slate-400">{item.isin}</div>
                   </td>
                   <td className="p-3.5">
@@ -184,19 +194,6 @@ export function HoldingsTable({ holdings, selectedIsin, onSelectIsin }: Holdings
                     >
                       {isGain ? '+' : ''}€{item.gainEur.toFixed(2)} ({isGain ? '+' : ''}{item.gainPct.toFixed(2)}%)
                     </span>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <button
-                      onClick={() => onSelectIsin(item.isin)}
-                      className={`p-1.5 rounded-lg border transition-all ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-indigo-600/30 hover:text-indigo-300'
-                      }`}
-                      title="View chart in performance panel"
-                    >
-                      <LineChart className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               );

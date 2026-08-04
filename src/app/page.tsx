@@ -8,6 +8,7 @@ import { TagesgeldCard } from '@/components/TagesgeldCard';
 import { AssetAllocationChart } from '@/components/AssetAllocationChart';
 import { DividendsInterestSection } from '@/components/DividendsInterestSection';
 import { HoldingsTable } from '@/components/HoldingsTable';
+import { WatchlistTable } from '@/components/WatchlistTable';
 import { LoginModal } from '@/components/LoginModal';
 import { Loader2, AlertCircle, LogIn } from 'lucide-react';
 
@@ -17,6 +18,9 @@ export default function Dashboard() {
   const [holdings, setHoldings] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [tagesgeld, setTagesgeld] = useState<any>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist'>('portfolio');
   const [selectedIsin, setSelectedIsin] = useState<string>('LU0274208692');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
@@ -30,12 +34,14 @@ export default function Dashboard() {
       setIsRefreshing(true);
       setError(null);
 
-      const [whoamiRes, overviewRes, holdingsRes, transactionsRes, tagesgeldRes] = await Promise.all([
+      const [whoamiRes, overviewRes, holdingsRes, transactionsRes, tagesgeldRes, alertsRes, watchlistRes] = await Promise.all([
         fetch('/api/sc/whoami').then((r) => r.json()),
         fetch('/api/sc/overview').then((r) => r.json()),
         fetch('/api/sc/holdings').then((r) => r.json()),
         fetch('/api/sc/transactions').then((r) => r.json()),
-        fetch('/api/sc/tagesgeld').then((r) => r.json())
+        fetch('/api/sc/tagesgeld').then((r) => r.json()),
+        fetch('/api/sc/alerts').then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/sc/watchlist').then((r) => r.json()).catch(() => ({ ok: false }))
       ]);
 
       if (whoamiRes.ok && whoamiRes.data?.name) {
@@ -61,6 +67,16 @@ export default function Dashboard() {
         setTagesgeld(tagesgeldRes.data);
       }
 
+      if (alertsRes.ok && alertsRes.data) {
+        const items = alertsRes.data.result?.items || alertsRes.data.items || (Array.isArray(alertsRes.data.result) ? alertsRes.data.result : []);
+        setAlerts(Array.isArray(items) ? items : []);
+      }
+
+      if (watchlistRes.ok && watchlistRes.data) {
+        const items = watchlistRes.data.result?.items || watchlistRes.data.items || (Array.isArray(watchlistRes.data.result) ? watchlistRes.data.result : []);
+        setWatchlist(Array.isArray(items) ? items : []);
+      }
+
       setRefreshTrigger((prev) => prev + 1);
       setLastUpdated(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err: any) {
@@ -80,6 +96,8 @@ export default function Dashboard() {
       setHoldings([]);
       setTransactions([]);
       setTagesgeld(null);
+      setAlerts([]);
+      setWatchlist([]);
     } catch (err) {
       console.error('Logout failed:', err);
     }
@@ -92,6 +110,49 @@ export default function Dashboard() {
       chartElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  const handleRemoveFromWatchlist = async (isin: string) => {
+    try {
+      const res = await fetch('/api/sc/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', isin })
+      }).then(r => r.json());
+      
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert(res.error || 'Failed to remove from watchlist');
+      }
+    } catch (err: any) {
+      console.error('Failed to remove from watchlist:', err);
+    }
+  };
+
+  const handleAddWatchlist = async (isin: string) => {
+    try {
+      const res = await fetch('/api/sc/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', isin })
+      }).then(r => r.json());
+      
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert(res.error || 'Failed to add to watchlist');
+      }
+    } catch (err: any) {
+      console.error('Failed to add to watchlist:', err);
+    }
+  };
+
+  const combinedSecurities = [...holdings];
+  watchlist.forEach((w: any) => {
+    if (!combinedSecurities.find((h: any) => h.isin === w.isin)) {
+      combinedSecurities.push(w);
+    }
+  });
 
   useEffect(() => {
     fetchData();
@@ -147,38 +208,80 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Top Portfolio & Combined Wealth Metrics */}
-            <OverviewCards
-              overviewData={overview}
-              holdingsCount={holdings.length}
-              tagesgeldBalance={tagesgeldBalance}
-            />
+            {/* Tab Switcher */}
+            <div className="flex justify-center mb-8">
+              <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+                <button
+                  onClick={() => setActiveTab('portfolio')}
+                  className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all ${
+                    activeTab === 'portfolio'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  Portfolio
+                </button>
+                <button
+                  onClick={() => setActiveTab('watchlist')}
+                  className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all ${
+                    activeTab === 'watchlist'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  Watchlist
+                </button>
+              </div>
+            </div>
 
-            {/* Tagesgeld Account Card */}
-            <TagesgeldCard tagesgeldData={tagesgeld} />
-
-            {/* Main Performance Chart */}
+            {/* Main Performance Chart (always visible) */}
             <div id="performance-chart-panel" className="scroll-mt-24">
               <PerformanceChart
-                holdings={holdings}
+                holdings={combinedSecurities}
                 selectedIsin={selectedIsin}
                 onSelectIsin={setSelectedIsin}
                 refreshTrigger={refreshTrigger}
+                alerts={alerts}
+                onAlertsChange={fetchData}
               />
             </div>
 
-            {/* Holdings Table directly under the Performance Chart */}
-            <HoldingsTable
-              holdings={holdings}
-              selectedIsin={selectedIsin}
-              onSelectIsin={handleSelectIsinAndScroll}
-            />
+            {activeTab === 'portfolio' ? (
+              <>
+                {/* Top Portfolio & Combined Wealth Metrics */}
+                <OverviewCards
+                  overviewData={overview}
+                  holdingsCount={holdings.length}
+                  tagesgeldBalance={tagesgeldBalance}
+                />
 
-            {/* Dividends & Interest Income Section */}
-            <DividendsInterestSection transactions={transactions} loading={isRefreshing} />
+                {/* Tagesgeld Account Card */}
+                <TagesgeldCard tagesgeldData={tagesgeld} />
 
-            {/* Asset Distribution & Top Holdings */}
-            <AssetAllocationChart holdings={holdings} totalValuation={totalValuation} />
+                {/* Holdings Table directly under the Performance Chart */}
+                <HoldingsTable
+                  holdings={holdings}
+                  selectedIsin={selectedIsin}
+                  onSelectIsin={handleSelectIsinAndScroll}
+                  alerts={alerts}
+                />
+
+                {/* Dividends & Interest Income Section */}
+                <DividendsInterestSection transactions={transactions} loading={isRefreshing} />
+
+                {/* Asset Distribution & Top Holdings */}
+                <AssetAllocationChart holdings={holdings} totalValuation={totalValuation} />
+              </>
+            ) : (
+              <WatchlistTable
+                watchlist={watchlist}
+                selectedIsin={selectedIsin}
+                onSelectIsin={handleSelectIsinAndScroll}
+                onRemoveIsin={handleRemoveFromWatchlist}
+                onAddIsin={handleAddWatchlist}
+                alerts={alerts}
+              />
+            )}
           </>
         )}
       </main>

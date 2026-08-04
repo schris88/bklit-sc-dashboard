@@ -35,6 +35,8 @@ interface PerformanceChartProps {
   selectedIsin: string;
   onSelectIsin: (isin: string) => void;
   refreshTrigger?: number;
+  alerts?: PriceAlert[];
+  onAlertsChange?: () => void;
 }
 
 const TIMEFRAMES = [
@@ -59,10 +61,9 @@ const PRESET_PERCENTAGES = [
   { label: '-10%', value: -10, isUp: false }
 ];
 
-export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refreshTrigger = 0 }: PerformanceChartProps) {
+export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refreshTrigger = 0, alerts = [], onAlertsChange }: PerformanceChartProps) {
   const [timeframe, setTimeframe] = useState<string>('1y');
   const [chartData, setChartData] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [customPriceInput, setCustomPriceInput] = useState<string>('');
   const [showTrendline, setShowTrendline] = useState<boolean>(true);
   const [showSMA20, setShowSMA20] = useState<boolean>(false);
@@ -148,22 +149,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
     };
   }, [selectedIsin, timeframe, refreshTrigger]);
 
-  // Fetch price alerts
-  const fetchAlerts = () => {
-    fetch('/api/sc/alerts')
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.ok && res.data) {
-          const items = res.data.result?.items || res.data.items || (Array.isArray(res.data.result) ? res.data.result : []);
-          setAlerts(Array.isArray(items) ? items : []);
-        }
-      })
-      .catch((err) => console.error('Error fetching alerts:', err));
-  };
 
-  useEffect(() => {
-    fetchAlerts();
-  }, [refreshTrigger]);
 
   // Add price alert handler
   const handleAddAlertByPrice = async (targetPrice: number) => {
@@ -178,7 +164,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
       }).then((r) => r.json());
 
       if (res.ok) {
-        fetchAlerts();
+        onAlertsChange?.();
       } else {
         alert(res.error || 'Failed to set price alert');
       }
@@ -208,7 +194,7 @@ export function PerformanceChart({ holdings, selectedIsin, onSelectIsin, refresh
       }).then((r) => r.json());
 
       if (res.ok) {
-        fetchAlerts();
+        onAlertsChange?.();
       } else {
         alert(res.error || 'Failed to remove price alert');
       }
