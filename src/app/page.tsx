@@ -35,21 +35,27 @@ export default function Dashboard() {
       setIsRefreshing(true);
       setError(null);
 
-      const [whoamiRes, overviewRes, holdingsRes, transactionsRes, tagesgeldRes, alertsRes, watchlistRes] = await Promise.all([
-        fetch('/api/sc/whoami').then((r) => r.json()),
-        fetch('/api/sc/overview').then((r) => r.json()),
-        fetch('/api/sc/holdings').then((r) => r.json()),
-        fetch('/api/sc/transactions').then((r) => r.json()),
-        fetch('/api/sc/tagesgeld').then((r) => r.json()),
+      // Check login status first via whoami
+      const whoamiRes = await fetch('/api/sc/whoami').then((r) => r.json()).catch(() => ({ ok: false }));
+
+      if (!whoamiRes.ok || !whoamiRes.data?.name) {
+        setWhoami(null);
+        setLoading(false);
+        setIsRefreshing(false);
+        return;
+      }
+
+      setWhoami(whoamiRes.data);
+
+      // Only fetch portfolio data if logged in
+      const [overviewRes, holdingsRes, transactionsRes, tagesgeldRes, alertsRes, watchlistRes] = await Promise.all([
+        fetch('/api/sc/overview').then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/sc/holdings').then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/sc/transactions').then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/sc/tagesgeld').then((r) => r.json()).catch(() => ({ ok: false })),
         fetch('/api/sc/alerts').then((r) => r.json()).catch(() => ({ ok: false })),
         fetch('/api/sc/watchlist').then((r) => r.json()).catch(() => ({ ok: false }))
       ]);
-
-      if (whoamiRes.ok && whoamiRes.data?.name) {
-        setWhoami(whoamiRes.data);
-      } else {
-        setWhoami(null);
-      }
 
       if (overviewRes.ok) setOverview(overviewRes.data);
       if (holdingsRes.ok && holdingsRes.data?.result?.items) {
@@ -153,6 +159,7 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/sc/alarms/reset', { method: 'POST' }).then(r => r.json());
       if (res.ok) {
+        alert(res.message || 'Alarms reset successfully');
         fetchData();
       } else {
         alert(res.error || 'Failed to reset alarms');

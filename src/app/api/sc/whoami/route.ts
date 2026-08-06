@@ -7,6 +7,7 @@ const execAsync = promisify(exec);
 export async function GET() {
   try {
     const { stdout } = await execAsync('/usr/local/bin/sc whoami', {
+      timeout: 8000,
       env: { ...process.env, PATH: `/usr/local/bin:${process.env.PATH}` }
     });
     // Parse key: value lines
