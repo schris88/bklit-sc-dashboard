@@ -21,7 +21,7 @@ Kudos to the team for supporting developer tools and fostering an open ecosystem
 
 ## 🌟 Overview
 
-The **Scalable Capital Web Dashboard** (`bklit-sc-dashboard`) brings a sleek, visual frontend interface to your Scalable Capital portfolio using the data provided directly by `scalable-cli`.
+The **Scalable Capital Web Dashboard** (`ScalableCLI-Dashboard`) brings a sleek, visual frontend interface to your Scalable Capital portfolio using the data provided directly by `scalable-cli`.
 
 It communicates with local `sc` CLI endpoints via lightweight Next.js API routes, giving you real-time insights into your portfolio performance, Tagesgeld cash interest, asset allocation, historical charts, and transaction history — all wrapped in a modern dark-mode aesthetic with smooth micro-animations.
 
@@ -34,8 +34,8 @@ It communicates with local `sc` CLI endpoints via lightweight Next.js API routes
 - 📋 **Holdings Breakdown**: Detailed holdings table with real-time quotes, allocation percentages, gain/loss indicators, and smooth scrolling chart sync.
 - 🏦 **Tagesgeld Account Integration**: Dedicated Tagesgeld card displaying interest rates, current balance, and accrued interest earnings.
 - 💵 **Dividends & Interest Tracking**: Detailed view of past dividend payouts, coupon distributions, and cash interest.
-- 🔔 **Price Alerts & Savings Plans**: Overview of active price alerts and automated savings plans.
-- 🔐 **Safe & Read-Only Focus**: No buy/sell functionality implemented (zero risk of accidental orders), two-step confirmation safety, and the only supported write operation is adding price alerts.
+- 🔔 **Price Alerts & Savings Plans**: Overview of active price alerts, automated savings plans, and a one-click "Reset Alarms (±5%)" feature for your holdings.
+- 🔐 **Safe & Read-Only Focus**: No buy/sell functionality implemented (zero risk of accidental orders), two-step confirmation safety, and the only supported write operations are managing price alerts.
 
 ---
 
@@ -63,8 +63,8 @@ The CLI is currently in beta:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/schris88/bklit-sc-dashboard.git
-cd bklit-sc-dashboard
+git clone https://github.com/schris88/ScalableCLI-Dashboard.git
+cd ScalableCLI-Dashboard
 ```
 
 ### 2. Install Dependencies
@@ -111,6 +111,7 @@ The Next.js API layer routes request to the local `sc` CLI:
 - `/api/sc/transactions` ➔ `sc broker transactions --json`
 - `/api/sc/chart` ➔ `sc broker chart --isin <ISIN> --timeframe <timeframe> --json`
 - `/api/sc/alerts` ➔ `sc broker price-alerts --json`
+- `/api/sc/alarms/reset` ➔ Deletes all alerts & creates new ±5% alerts.
 
 ---
 
@@ -121,7 +122,7 @@ The Next.js API layer routes request to the local `sc` CLI:
 > - **No Buy or Sell Functionality**: There is **no buy or sell functionality** implemented anywhere in this dashboard. It is physically impossible to execute trades, place orders, or transfer funds through this application.
 > - **Safe from Accidental Triggers**: There is **zero chance of accidentally triggering any financial transaction**.
 > - **Two-Step Safety**: Actions are strictly guarded by two-step confirmation flows to prevent accidental edits.
-> - **Only Write Operation**: The **only write operation** supported by this dashboard is adding price alerts (alarms). All other operations are strictly read-only portfolio views.
+> - **Only Write Operations**: The **only write operations** supported by this dashboard are managing price alerts (alarms). All other operations are strictly read-only portfolio views.
 
 - **Local Execution**: All data stays on your local machine. The dashboard only communicates with your local installation of `scalable-cli`.
 - **Read-Only Mode Recommended**: You can also log in with `sc login --local-read-only` when using third-party dashboards for an additional layer of security.
@@ -142,4 +143,4 @@ The Next.js API layer routes request to the local `sc` CLI:
 ## 📜 Links & References
 
 - 📦 **Official Scalable Capital CLI**: [github.com/ScalableCapital/scalable-cli](https://github.com/ScalableCapital/scalable-cli)
-- 📊 **Dashboard Repository**: [github.com/schris88/bklit-sc-dashboard](https://github.com/schris88/bklit-sc-dashboard)
+- 📊 **Dashboard Repository**: [github.com/schris88/ScalableCLI-Dashboard](https://github.com/schris88/ScalableCLI-Dashboard)

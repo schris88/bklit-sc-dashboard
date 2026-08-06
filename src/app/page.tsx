@@ -10,7 +10,7 @@ import { DividendsInterestSection } from '@/components/DividendsInterestSection'
 import { HoldingsTable } from '@/components/HoldingsTable';
 import { WatchlistTable } from '@/components/WatchlistTable';
 import { LoginModal } from '@/components/LoginModal';
-import { Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { Loader2, AlertCircle, LogIn, Bell } from 'lucide-react';
 
 export default function Dashboard() {
   const [whoami, setWhoami] = useState<any>(null);
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isResettingAlarms, setIsResettingAlarms] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
@@ -147,6 +148,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleResetAlarms = async () => {
+    setIsResettingAlarms(true);
+    try {
+      const res = await fetch('/api/sc/alarms/reset', { method: 'POST' }).then(r => r.json());
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert(res.error || 'Failed to reset alarms');
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsResettingAlarms(false);
+    }
+  };
+
   const combinedSecurities = [...holdings];
   watchlist.forEach((w: any) => {
     if (!combinedSecurities.find((h: any) => h.isin === w.isin)) {
@@ -208,8 +225,10 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Tab Switcher */}
-            <div className="flex justify-center mb-8">
+            {/* Controls: Tab Switcher & Reset Alarms */}
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+              <div className="w-full sm:w-1/3"></div> {/* spacer for centering tab switcher if we want, or just flex-1 */}
+              
               <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800">
                 <button
                   onClick={() => setActiveTab('portfolio')}
@@ -230,6 +249,18 @@ export default function Dashboard() {
                   }`}
                 >
                   Watchlist
+                </button>
+              </div>
+
+              <div className="w-full sm:w-1/3 flex justify-end">
+                <button
+                  onClick={handleResetAlarms}
+                  disabled={isResettingAlarms}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-amber-600/30 text-slate-300 hover:text-amber-400 border border-slate-700 hover:border-amber-500/50 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 w-full sm:w-auto"
+                  title="Deletes all alarms and creates +5%/-5% alarms for all holdings & watchlist items"
+                >
+                  {isResettingAlarms ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                  Reset Alarms (±5%)
                 </button>
               </div>
             </div>
